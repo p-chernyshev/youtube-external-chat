@@ -4,6 +4,7 @@
   "description": "Chrome extension to move YouTube live chat into a separate window",
   "main": "index.js",
   "scripts": {
+    "build": "webpack --config webpack.config.js"
   },
   "author": "p-chernyshev",
   "license": "ISC",
