@@ -1,0 +1,10 @@
+{
+  "name": "youtube-external-chat",
+  "version": "0.0.0",
+  "description": "Chrome extension to move YouTube live chat into a separate window",
+  "main": "index.js",
+  "scripts": {
+  },
+  "author": "p-chernyshev",
+  "license": "ISC"
+}
