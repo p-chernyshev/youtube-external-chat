@@ -1,0 +1,21 @@
+.yt-external-chat-button {
+    width: 40px;
+    height: 40px;
+    color: var(--yt-spec-icon-inactive, inherit);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: none;
+    cursor: pointer;
+    background: none;
+}
+
+.yt-external-chat-button:hover {
+    color: var(--yt-spec-icon-active-other, inherit);
+}
+
+.yt-external-chat-button__icon {
+    vertical-align: middle;
+    width: 24px;
+    height: 24px;
+}
