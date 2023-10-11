@@ -1,13 +1,17 @@
-if (isIframe(window)) addExternalChatButton();
-
-function isIframe(window: Window): boolean {
-    return (
-        !!window.frameElement || (!isPopup(window) && window !== window.parent)
-    );
+const channel = new BroadcastChannel('youtube-player-state');
+if (isIframe(window)) {
+    addExternalChatButton();
+    window.addEventListener('message', (message) => {
+        channel.postMessage(message.data);
+    });
+} else {
+    channel.addEventListener('message', (message) => {
+        window.postMessage(message.data, message.origin);
+    });
 }
 
-function isPopup(window: Window): boolean {
-    return Boolean(window.opener) && window.opener !== window;
+function isIframe(window: Window): boolean {
+    return !!window.frameElement;
 }
 
 function addExternalChatButton(): void {
@@ -42,8 +46,4 @@ function openChatWindow(): void {
         'popup,location=no'
     );
     if (!popup) throw new Error('Could not open chat popup');
-
-    window.addEventListener('message', (message) => {
-        popup.postMessage(message.data, message.origin);
-    });
 }
