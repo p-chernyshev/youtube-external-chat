@@ -2,27 +2,45 @@ interface PlayerStateMessage {
     'yt-player-video-progress'?: number;
     'yt-player-state-change'?: number;
 }
-interface ChannelPlayerStateMessage extends PlayerStateMessage {
-    parameters: string;
+interface ChannelMessage {
+    chatParameters: string;
+}
+interface ChannelPlayerStateMessage
+    extends PlayerStateMessage,
+        ChannelMessage {}
+interface ChannelWindowStateMessage extends ChannelMessage {
+    event: 'close';
 }
 
 const channel = new BroadcastChannel('youtube-player-state');
 if (isIframe(window)) {
+    const chatParameters = window.location.search;
     addExternalChatButton();
     window.addEventListener(
         'message',
         (message: MessageEvent<PlayerStateMessage>) => {
-            channel.postMessage({
+            const channelMessage: ChannelPlayerStateMessage = {
                 ...message.data,
-                parameters: window.location.search,
-            });
+                chatParameters,
+            };
+            channel.postMessage(channelMessage);
         }
     );
+    window.addEventListener('pagehide', () => {
+        const channelMessage: ChannelWindowStateMessage = {
+            event: 'close',
+            chatParameters,
+        };
+        channel.postMessage(channelMessage);
+    });
 } else {
     channel.addEventListener(
         'message',
-        (message: MessageEvent<ChannelPlayerStateMessage>) => {
-            if (window.location.search !== message.data.parameters) return;
+        (message: MessageEvent<ChannelMessage>) => {
+            if (window.location.search !== message.data.chatParameters) return;
+            if ('event' in message.data && message.data.event === 'close') {
+                window.close();
+            }
             window.postMessage(message.data, message.origin);
         }
     );
