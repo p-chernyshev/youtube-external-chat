@@ -1,13 +1,31 @@
+interface PlayerStateMessage {
+    'yt-player-video-progress'?: number;
+    'yt-player-state-change'?: number;
+}
+interface ChannelPlayerStateMessage extends PlayerStateMessage {
+    parameters: string;
+}
+
 const channel = new BroadcastChannel('youtube-player-state');
 if (isIframe(window)) {
     addExternalChatButton();
-    window.addEventListener('message', (message) => {
-        channel.postMessage(message.data);
-    });
+    window.addEventListener(
+        'message',
+        (message: MessageEvent<PlayerStateMessage>) => {
+            channel.postMessage({
+                ...message.data,
+                parameters: window.location.search,
+            });
+        }
+    );
 } else {
-    channel.addEventListener('message', (message) => {
-        window.postMessage(message.data, message.origin);
-    });
+    channel.addEventListener(
+        'message',
+        (message: MessageEvent<ChannelPlayerStateMessage>) => {
+            if (window.location.search !== message.data.parameters) return;
+            window.postMessage(message.data, message.origin);
+        }
+    );
 }
 
 function isIframe(window: Window): boolean {
