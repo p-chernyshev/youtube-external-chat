@@ -7,9 +7,12 @@ import {
 } from './types/channel-message';
 import { ChatParameters } from './types/chat-parameters';
 import { PlayerStateMessage } from './types/youtube-player';
+import { DEFAULT_SETTINGS } from './default-settings';
 
 const channel = new BroadcastChannel('youtube-player-state');
 const chatParameters = initializeChatWindowParameters();
+// TODO Settings interface
+const settings = DEFAULT_SETTINGS;
 
 if (isIframe(window)) {
     addExternalChatButton();
@@ -17,11 +20,14 @@ if (isIframe(window)) {
     broadcastParentVideoWindowClosed();
 } else {
     receiveMessages((messageParameters, message, origin) => {
-        syncToNewWindowWithSameVideo(messageParameters);
+        if (settings.syncToNewWindow) {
+            syncToNewWindowWithSameVideo(messageParameters);
+        }
         if (!messageFromSameChat(messageParameters)) return;
         updateUnsetParameters(messageParameters);
-        // TODO Settings
-        // closeWindowWhenClosingOriginalVideo(message);
+        if (settings.closeWithParentWindow) {
+            closeWindowWhenClosingOriginalVideo(message);
+        }
         replicatePlayerState(message, origin);
     });
 }

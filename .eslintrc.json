@@ -153,6 +153,7 @@
     "sort-imports": [
       "error",
       {
+        "ignoreDeclarationSort": true,
         "allowSeparatedGroups": true
       }
     ],
