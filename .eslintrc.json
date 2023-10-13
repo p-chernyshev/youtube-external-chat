@@ -157,5 +157,6 @@
       }
     ],
     "yoda": "error"
-  }
+  },
+  "reportUnusedDisableDirectives": true
 }

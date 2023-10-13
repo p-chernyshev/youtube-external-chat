@@ -1,30 +1,12 @@
-interface PlayerStateMessage {
-    'yt-player-video-progress'?: number;
-    'yt-player-state-change'?: number;
-}
-interface ChatParameters {
-    href: string;
-    video: string | null;
-    openedAt: number;
-}
-interface ChannelMessage<T extends ChannelMessageData = ChannelMessageData> {
-    parameters: ChatParameters;
-    message: T;
-}
-type ChannelMessageData = PlayerStateMessage | WindowStateMessage;
-interface WindowStateMessage {
-    event: 'close';
-}
-function isPlayerStateMessage(
-    message: ChannelMessageData
-): message is PlayerStateMessage {
-    return !isWindowStateMessage(message);
-}
-function isWindowStateMessage(
-    message: ChannelMessageData
-): message is WindowStateMessage {
-    return 'event' in message;
-}
+import {
+    ChannelMessage,
+    ChannelMessageData,
+    WindowStateMessage,
+    isPlayerStateMessage,
+    isWindowStateMessage,
+} from './types/channel-message';
+import { ChatParameters } from './types/chat-parameters';
+import { PlayerStateMessage } from './types/youtube-player';
 
 const channel = new BroadcastChannel('youtube-player-state');
 const chatParameters = initializeChatWindowParameters();
