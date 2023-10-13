@@ -2,9 +2,11 @@ interface PlayerStateMessage {
     'yt-player-video-progress'?: number;
     'yt-player-state-change'?: number;
 }
-interface ChannelMessage {
-    chatParameters: string;
+interface ChatParameters {
+    href: string;
+    video: string | null;
 }
+type ChannelMessage = ChatParameters;
 interface ChannelPlayerStateMessage
     extends PlayerStateMessage,
         ChannelMessage {}
@@ -13,35 +15,42 @@ interface ChannelWindowStateMessage extends ChannelMessage {
 }
 
 const channel = new BroadcastChannel('youtube-player-state');
+const chatParameters: ChatParameters = {
+    href: window.location.href,
+    video: new URLSearchParams(window.parent.location.search).get('v'),
+};
 if (isIframe(window)) {
-    const chatParameters = window.location.search;
     addExternalChatButton();
     window.addEventListener(
         'message',
         (message: MessageEvent<PlayerStateMessage>) => {
             const channelMessage: ChannelPlayerStateMessage = {
+                ...chatParameters,
                 ...message.data,
-                chatParameters,
             };
             channel.postMessage(channelMessage);
         }
     );
     window.addEventListener('pagehide', () => {
         const channelMessage: ChannelWindowStateMessage = {
+            ...chatParameters,
             event: 'close',
-            chatParameters,
         };
         channel.postMessage(channelMessage);
     });
 } else {
     channel.addEventListener(
         'message',
-        (message: MessageEvent<ChannelMessage>) => {
-            if (window.location.search !== message.data.chatParameters) return;
-            if ('event' in message.data && message.data.event === 'close') {
-                window.close();
-            }
-            window.postMessage(message.data, message.origin);
+        (messageEvent: MessageEvent<ChannelMessage>) => {
+            const { href, video, ...message } = messageEvent.data;
+            if (chatParameters.href !== href && chatParameters.video !== video) return;
+            if (chatParameters.video === null) chatParameters.video = video;
+            if (chatParameters.href !== href) chatParameters.href = href;
+            // TODO Settings
+            // if ('event' in messageEvent.data && messageEvent.data.event === 'close') {
+            //     window.close();
+            // }
+            window.postMessage(message, messageEvent.origin);
         }
     );
 }
