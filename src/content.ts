@@ -7,62 +7,55 @@ interface ChatParameters {
     video: string | null;
     openedAt: number;
 }
-type ChannelMessage = ChatParameters;
-interface ChannelPlayerStateMessage
-    extends PlayerStateMessage,
-        ChannelMessage {}
-interface ChannelWindowStateMessage extends ChannelMessage {
+interface ChannelMessage<T extends ChannelMessageData = ChannelMessageData> {
+    parameters: ChatParameters;
+    message: T;
+}
+type ChannelMessageData = PlayerStateMessage | WindowStateMessage;
+interface WindowStateMessage {
     event: 'close';
+}
+function isPlayerStateMessage(
+    message: ChannelMessageData
+): message is PlayerStateMessage {
+    return !isWindowStateMessage(message);
+}
+function isWindowStateMessage(
+    message: ChannelMessageData
+): message is WindowStateMessage {
+    return 'event' in message;
 }
 
 const channel = new BroadcastChannel('youtube-player-state');
-const chatParameters: ChatParameters = {
-    href: window.location.href,
-    video: new URLSearchParams(window.parent.location.search).get('v'),
-    openedAt: Date.now(),
-};
+const chatParameters = initializeChatWindowParameters();
+
 if (isIframe(window)) {
     addExternalChatButton();
-    window.addEventListener(
-        'message',
-        (message: MessageEvent<PlayerStateMessage>) => {
-            const channelMessage: ChannelPlayerStateMessage = {
-                ...chatParameters,
-                ...message.data,
-            };
-            channel.postMessage(channelMessage);
-        }
-    );
-    window.addEventListener('pagehide', () => {
-        const channelMessage: ChannelWindowStateMessage = {
-            ...chatParameters,
-            event: 'close',
-        };
-        channel.postMessage(channelMessage);
-    });
+    broadcastParentVideoPlayerState();
+    broadcastParentVideoWindowClosed();
 } else {
-    channel.addEventListener(
-        'message',
-        (messageEvent: MessageEvent<ChannelMessage>) => {
-            const { href, video, openedAt, ...message } = messageEvent.data;
-            if (chatParameters.href === href) {
-                if (chatParameters.video === null) chatParameters.video = video;
-                // TODO Settings
-                // if ('event' in messageEvent.data && messageEvent.data.event === 'close') {
-                //     window.close();
-                // }
-                window.postMessage(message, messageEvent.origin);
-            }
-            if (
-                chatParameters.video === video &&
-                chatParameters.href !== href &&
-                openedAt > chatParameters.openedAt
-            ) {
-                chatParameters.href = href;
-                chatParameters.openedAt = openedAt;
-            }
-        }
-    );
+    receiveMessages((messageParameters, message, origin) => {
+        syncToNewWindowWithSameVideo(messageParameters);
+        if (!messageFromSameChat(messageParameters)) return;
+        updateUnsetParameters(messageParameters);
+        // TODO Settings
+        // closeWindowWhenClosingOriginalVideo(message);
+        replicatePlayerState(message, origin);
+    });
+}
+
+function initializeChatWindowParameters(): ChatParameters {
+    let video: string | null = null;
+    try {
+        video = new URLSearchParams(window.parent.location.search).get('v');
+    } catch (error) {
+        if (!(error instanceof DOMException)) throw error;
+    }
+    return {
+        href: window.location.href,
+        video,
+        openedAt: Date.now(),
+    };
 }
 
 function isIframe(window: Window): boolean {
@@ -82,6 +75,7 @@ function addExternalChatButton(): void {
 
     const svg = document.createElement('svg');
     popoutButton.appendChild(svg);
+    // TODO load file
     svg.outerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="yt-external-chat-button__icon">
             <path
@@ -101,4 +95,82 @@ function openChatWindow(): void {
         'popup,location=no'
     );
     if (!popup) throw new Error('Could not open chat popup');
+}
+
+function broadcastParentVideoPlayerState(): void {
+    window.addEventListener(
+        'message',
+        (message: MessageEvent<PlayerStateMessage>) => {
+            const channelMessage: ChannelMessage<PlayerStateMessage> = {
+                parameters: chatParameters,
+                message: message.data,
+            };
+            channel.postMessage(channelMessage);
+        }
+    );
+}
+
+function broadcastParentVideoWindowClosed(): void {
+    window.addEventListener('pagehide', () => {
+        const channelMessage: ChannelMessage<WindowStateMessage> = {
+            parameters: chatParameters,
+            message: {
+                event: 'close',
+            },
+        };
+        channel.postMessage(channelMessage);
+    });
+}
+
+function receiveMessages(
+    handler: (
+        parameters: ChatParameters,
+        message: ChannelMessageData,
+        origin: MessageEvent['origin']
+    ) => void
+): void {
+    channel.addEventListener(
+        'message',
+        (messageEvent: MessageEvent<ChannelMessage>) => {
+            handler(
+                messageEvent.data.parameters,
+                messageEvent.data.message,
+                messageEvent.origin
+            );
+        }
+    );
+}
+
+function syncToNewWindowWithSameVideo(parameters: ChatParameters): void {
+    if (
+        chatParameters.video === parameters.video &&
+        chatParameters.href !== parameters.href &&
+        parameters.openedAt > chatParameters.openedAt
+    ) {
+        chatParameters.href = parameters.href;
+        chatParameters.openedAt = parameters.openedAt;
+    }
+}
+
+function messageFromSameChat(messageParameters: ChatParameters): boolean {
+    return chatParameters.href === messageParameters.href;
+}
+
+function updateUnsetParameters(messageParameters: ChatParameters): void {
+    if (chatParameters.video === null) {
+        chatParameters.video = messageParameters.video;
+    }
+}
+
+function closeWindowWhenClosingOriginalVideo(
+    message: ChannelMessageData
+): void {
+    if (isWindowStateMessage(message)) window.close();
+}
+
+function replicatePlayerState(
+    message: ChannelMessageData,
+    origin: string
+): void {
+    if (isPlayerStateMessage(message)) window.postMessage(message, origin);
 }
