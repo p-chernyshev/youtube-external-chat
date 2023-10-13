@@ -5,6 +5,7 @@ interface PlayerStateMessage {
 interface ChatParameters {
     href: string;
     video: string | null;
+    openedAt: number;
 }
 type ChannelMessage = ChatParameters;
 interface ChannelPlayerStateMessage
@@ -18,6 +19,7 @@ const channel = new BroadcastChannel('youtube-player-state');
 const chatParameters: ChatParameters = {
     href: window.location.href,
     video: new URLSearchParams(window.parent.location.search).get('v'),
+    openedAt: Date.now(),
 };
 if (isIframe(window)) {
     addExternalChatButton();
@@ -42,15 +44,23 @@ if (isIframe(window)) {
     channel.addEventListener(
         'message',
         (messageEvent: MessageEvent<ChannelMessage>) => {
-            const { href, video, ...message } = messageEvent.data;
-            if (chatParameters.href !== href && chatParameters.video !== video) return;
-            if (chatParameters.video === null) chatParameters.video = video;
-            if (chatParameters.href !== href) chatParameters.href = href;
-            // TODO Settings
-            // if ('event' in messageEvent.data && messageEvent.data.event === 'close') {
-            //     window.close();
-            // }
-            window.postMessage(message, messageEvent.origin);
+            const { href, video, openedAt, ...message } = messageEvent.data;
+            if (chatParameters.href === href) {
+                if (chatParameters.video === null) chatParameters.video = video;
+                // TODO Settings
+                // if ('event' in messageEvent.data && messageEvent.data.event === 'close') {
+                //     window.close();
+                // }
+                window.postMessage(message, messageEvent.origin);
+            }
+            if (
+                chatParameters.video === video &&
+                chatParameters.href !== href &&
+                openedAt > chatParameters.openedAt
+            ) {
+                chatParameters.href = href;
+                chatParameters.openedAt = openedAt;
+            }
         }
     );
 }
