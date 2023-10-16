@@ -108,6 +108,12 @@
     ],
     "@typescript-eslint/strict-boolean-expressions": "error",
     "@typescript-eslint/switch-exhaustiveness-check": "error",
+    "@typescript-eslint/unbound-method": [
+      "error",
+      {
+        "ignoreStatic": true
+      }
+    ],
     "arrow-body-style": "error",
     "curly": ["error", "multi-line", "consistent"],
     "default-case": "error",
